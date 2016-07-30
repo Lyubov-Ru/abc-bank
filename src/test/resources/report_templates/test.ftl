@@ -1,0 +1,1 @@
+$${amount?string["0.00"]}

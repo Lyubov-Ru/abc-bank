@@ -1,46 +1,42 @@
 package com.abc;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.abc.exceptions.ReportGenerationException;
+import freemarker.template.TemplateException;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URISyntaxException;
+import java.util.*;
 
 public class Bank {
-    private List<Customer> customers;
-
-    public Bank() {
-        customers = new ArrayList<Customer>();
-    }
+    private final List<Customer> customers  = new ArrayList<Customer>();
 
     public void addCustomer(Customer customer) {
-        customers.add(customer);
+        if ((customer != null) && !customers.contains(customer)) {
+            customers.add(customer);
+        }
     }
 
-    public String customerSummary() {
-        String summary = "Customer Summary";
-        for (Customer c : customers)
-            summary += "\n - " + c.getName() + " (" + format(c.getNumberOfAccounts(), "account") + ")";
-        return summary;
+    public String getCustomersSummaryReport() throws ReportGenerationException {
+        return Reporter.getInstance().createAllCustomersSummaryReport(getCustomers());
     }
 
-    //Make sure correct plural of word is created based on the number passed in:
-    //If number passed in is 1 just return the word otherwise add an 's' at the end
-    private String format(int number, String word) {
-        return number + " " + (number == 1 ? word : word + "s");
+    public String getTotalInterestPaidReport() throws ReportGenerationException {
+        return Reporter.getInstance().createTotalInterestReport(getCustomers(), totalInterestPaid());
     }
 
-    public double totalInterestPaid() {
-        double total = 0;
+    public List<Customer> getCustomers() {
+        return Collections.unmodifiableList(customers);
+    }
+
+    public BigDecimal totalInterestPaid() {
+        BigDecimal total = BigDecimal.valueOf(0);
         for(Customer c: customers)
-            total += c.totalInterestEarned();
+            total = total.add(c.getTotalInterestPaid());
         return total;
     }
 
     public String getFirstCustomer() {
-        try {
-            customers = null;
-            return customers.get(0).getName();
-        } catch (Exception e){
-            e.printStackTrace();
-            return "Error";
-        }
+        return customers.isEmpty() ? null : customers.get(0).getName();
     }
 }

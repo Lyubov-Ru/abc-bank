@@ -1,54 +1,81 @@
 package com.abc;
 
+import com.abc.account.Account;
+import com.abc.account.CheckingAccount;
+import freemarker.template.TemplateException;
+import org.joda.time.LocalDateTime;
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URISyntaxException;
+import java.util.regex.Pattern;
+
+import static com.abc.TestUtils.PRECISION;
+import static com.abc.TestUtils.getPatternForNumeric;
+import static org.fest.assertions.api.Assertions.assertThat;
+import static org.fest.assertions.api.Assertions.offset;
 import static org.junit.Assert.assertEquals;
 
 public class BankTest {
-    private static final double DOUBLE_DELTA = 1e-15;
-
     @Test
-    public void customerSummary() {
-        Bank bank = new Bank();
-        Customer john = new Customer("John");
-        john.openAccount(new Account(Account.CHECKING));
-        bank.addCustomer(john);
+    public void computesTotalInterestAcrossSeveralAccountsAndCustomers() {
+        Bank bank = buildBankWithTwoCustomers();
 
-        assertEquals("Customer Summary\n - John (1 account)", bank.customerSummary());
+        TestUtils.configureDateForDateProvider(new LocalDateTime(2015, 2, 3, 5, 0));
+        assertThat(bank.totalInterestPaid().doubleValue())
+                .isEqualTo(3 * 1000 * 0.1 / 100 / 365, offset(PRECISION));
+        assertThat(bank.getCustomers().get(0).getTotalInterestPaid().doubleValue())
+                .isEqualTo(1 * 1000 * 0.1 / 100 / 365, offset(PRECISION));
+        assertThat(bank.getCustomers().get(1).getTotalInterestPaid().doubleValue())
+                .isEqualTo(2 * 1000 * 0.1 / 100 / 365, offset(PRECISION));
     }
 
-    @Test
-    public void checkingAccount() {
+    private Bank buildBankWithTwoCustomers() {
         Bank bank = new Bank();
-        Account checkingAccount = new Account(Account.CHECKING);
+
+        TestUtils.configureDateForDateProvider(new LocalDateTime(2015, 2, 1, 5, 0));
+        Account checkingAccount = new CheckingAccount();
         Customer bill = new Customer("Bill").openAccount(checkingAccount);
         bank.addCustomer(bill);
 
-        checkingAccount.deposit(100.0);
+        Account checkingAccount2 = new CheckingAccount();
+        Account checkingAccount3 = new CheckingAccount();
+        Customer bill2 = new Customer("John")
+                .openAccount(checkingAccount2)
+                .openAccount(checkingAccount3);
+        bank.addCustomer(bill2);
 
-        assertEquals(0.1, bank.totalInterestPaid(), DOUBLE_DELTA);
+        checkingAccount.deposit(BigDecimal.valueOf(1000.0));
+        checkingAccount2.deposit(BigDecimal.valueOf(1000.0));
+        checkingAccount3.deposit(BigDecimal.valueOf(1000.0));
+        return bank;
     }
 
     @Test
-    public void savings_account() {
-        Bank bank = new Bank();
-        Account checkingAccount = new Account(Account.SAVINGS);
-        bank.addCustomer(new Customer("Bill").openAccount(checkingAccount));
+    public void generatesSummaryReport() {
+        Bank bank = buildBankWithTwoCustomers();
 
-        checkingAccount.deposit(1500.0);
+        System.out.println(bank.getCustomersSummaryReport());
 
-        assertEquals(2.0, bank.totalInterestPaid(), DOUBLE_DELTA);
+        assertThat(bank.getCustomersSummaryReport())
+            .matches(Pattern.compile(".*Bill.*1.*", Pattern.DOTALL))
+            .matches(Pattern.compile(".*John.*2.*", Pattern.DOTALL));
     }
 
     @Test
-    public void maxi_savings_account() {
-        Bank bank = new Bank();
-        Account checkingAccount = new Account(Account.MAXI_SAVINGS);
-        bank.addCustomer(new Customer("Bill").openAccount(checkingAccount));
+    public void getTotalInterestPaidReport() {
+        Bank bank = buildBankWithTwoCustomers();
 
-        checkingAccount.deposit(3000.0);
+        TestUtils.configureDateForDateProvider(new LocalDateTime(2016, 2, 1, 5, 0));
 
-        assertEquals(170.0, bank.totalInterestPaid(), DOUBLE_DELTA);
+        System.out.println(bank.getTotalInterestPaidReport());
+
+        assertThat(bank.getTotalInterestPaidReport())
+            .matches(getPatternForNumeric(bank.totalInterestPaid()))
+            .matches(getPatternForNumeric(bank.getCustomers().get(0).getTotalInterestPaid()))
+            .matches(getPatternForNumeric(bank.getCustomers().get(1).getTotalInterestPaid()));
     }
 
 }

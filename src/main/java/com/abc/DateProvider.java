@@ -1,18 +1,23 @@
 package com.abc;
 
+import org.joda.time.DateTime;
+import org.joda.time.LocalDateTime;
+
 import java.util.Calendar;
 import java.util.Date;
 
 public class DateProvider {
-    private static DateProvider instance = null;
+    private static DateProvider instance = new DateProvider();
 
     public static DateProvider getInstance() {
-        if (instance == null)
-            instance = new DateProvider();
         return instance;
     }
 
-    public Date now() {
-        return Calendar.getInstance().getTime();
+    public static void setInstance(DateProvider dateProvider) {
+        instance = dateProvider;
+    }
+
+    public LocalDateTime now() {
+        return LocalDateTime.now();
     }
 }
